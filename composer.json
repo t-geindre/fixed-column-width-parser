@@ -1,0 +1,25 @@
+{
+    "name":         "zol/fixed-column-width-parser",
+    "type":         "library",
+    "description":  "Parse fixed column width files according to given schema",
+    "license":      "MIT",
+    "authors":      [
+        {
+            "name":     "Zol",
+            "homepage": "http://www.zol.fr"
+        },
+        {
+            "name":     "Thierry Geindre",
+            "email":    "dev@nostalgeek.org"
+        }
+    ],
+    "require":      {
+        "php":  ">=5.4.0"
+    },
+    "require-dev": {
+        "atoum/atoum": "dev-master",
+    },
+    "autoload":     {
+        "psr-0": { "": "src/" }
+    }
+}

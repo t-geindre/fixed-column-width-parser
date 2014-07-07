@@ -1,6 +1,4 @@
-# Fixed column width parser
-
-![Travis build](https://travis-ci.org/t-geindre/fixed-column-width-parser.svg?branch=master)
+# Fixed column width parser [![Build Status](https://travis-ci.org/t-geindre/fixed-column-width-parser.svg?branch=master)](https://travis-ci.org/t-geindre/fixed-column-width-parser)
 
 Parser for fixed column width files.
 

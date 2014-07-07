@@ -82,36 +82,6 @@ class Parser
 
     /**
      * Define file schema
-     * [
-     *     // Ignored lines, null if none
-     *     // first line is indexed by 1
-     *     // optionnal, null by default
-     *     'ignore' => [1, 8 , 9],
-     *     // Header line, null if missing
-     *     // optionnal, null by default
-     *     'header' => ['field' => length],
-     *     // Define entry schema
-     *     // required
-     *     'entry' => ['field' => length, 'field' => length],
-     *     // Use header values as entry field names
-     *     // If true, entry field names will be replaced with header values
-     *     // optionnal, false by default
-     *     'header-as-field-name' => false,
-     *     // Ignore empty line
-     *     // optionnal, true by default
-     *     'ignore-empty-lines' => true,
-     *     // Multiple in one
-     *     // If true, you must define separator
-     *     // optionnal, default false,
-     *     'multiple' => false,
-     *     // Separator, only used if multiple is true
-     *     // define files separator
-     *     'separator' => [
-     *         'field' => length, // Separator field
-     *         'values' => [ 'value', 'value'], // Field values considered as separator
-     *         'ignore' => true // Ignore separation line
-     *     ]
-     * ]
      *
      * @param array $schema
      *
@@ -208,7 +178,10 @@ class Parser
                         unset($data);
                         $data = [];
                         $this->data[] = &$data;
-                        $this->headerLine = $this->currentLineNumber;
+
+                        if ($this->headerLine > -1) {
+                            $this->headerLine = $this->currentLineNumber;
+                        }
 
                         if (is_array($this->schema['ignore'])) {
 
@@ -224,7 +197,9 @@ class Parser
                     }
 
                     if ($this->schema['separator']['ignore']) {
-                        $this->headerLine++;
+                        if ($this->headerLine > -1) {
+                            $this->headerLine++;
+                        }
                         continue;
                     }
 
@@ -262,6 +237,15 @@ class Parser
         return self::$defaultSchema;
     }
 
+    /**
+     * Parse one line
+     *
+     * @param string $line
+     * @param array  $schema
+     * @param array  $fieldNames
+     *
+     * @return string
+     */
     protected function parseLine($line, array $schema, array $fieldNames = null)
     {
         $data = [];
@@ -276,6 +260,15 @@ class Parser
         return $data;
     }
 
+    /**
+     * Parse one filed
+     *
+     * @param string   &$line
+     * @param integer  $length
+     * @param boolean  $remove
+     *
+     * @return string
+     */
     protected function parseField(&$line, $length, $remove = true)
     {
         $field = substr($line, 0, min($length, strlen($line)));
@@ -290,6 +283,14 @@ class Parser
         return empty($field) ? null: $field;
     }
 
+    /**
+     * Checkif given line is a separation line
+     *
+     * @param string  $line
+     * @param array   $separator
+     *
+     * @return boolean
+     */
     protected function isSeparationLine($line, array $separator)
     {
         return in_array(

@@ -14,7 +14,8 @@ class Parser
         'ignore' => null,
         'header' => null,
         'header-as-field-name' => false,
-        'ignore-empty-lines' => true
+        'ignore-empty-lines' => true,
+        'multiple' => false
     ];
 
     /**
@@ -28,19 +29,9 @@ class Parser
     protected $schema;
 
     /**
-     * @var boolean
-     */
-    protected $sctrictMode;
-
-    /**
      * @var integer
      */
     protected $currentLineNumber;
-
-    /**
-     * @var array
-     */
-    protected $currentEntryData;
 
     /**
      * @var integer
@@ -54,13 +45,11 @@ class Parser
 
     /**
      * @param array   $schema
-     * @param boolean $strictMode
      * @param string  $file
      */
-    public function __construct($schema = array(), $strictMode = false, $file = null)
+    public function __construct($schema = array(), $file = null)
     {
         $this->setSchema($schema);
-        $this->setStrictMode($strictMode);
 
         if (!is_null($file)) {
             $this->setFile($file);
@@ -95,25 +84,33 @@ class Parser
      * Define file schema
      * [
      *     // Ignored lines, null if none
-     *     // first line is indexed by 0
+     *     // first line is indexed by 1
      *     // optionnal, null by default
      *     'ignore' => [1, 8 , 9],
      *     // Header line, null if missing
      *     // optionnal, null by default
      *     'header' => ['field' => length],
-     *     'entry' => [
-     *          // Entry can be placed on multiple lines
-     *          // each array represent one line
-     *          ['field' => length, 'field' => length],
-     *          ['field' => length]
-     *     ],
+     *     // Define entry schema
+     *     // required
+     *     'entry' => ['field' => length, 'field' => length],
      *     // Use header values as entry field names
      *     // If true, entry field names will be replaced with header values
      *     // optionnal, false by default
      *     'header-as-field-name' => false,
      *     // Ignore empty line
      *     // optionnal, true by default
-     *     'ignore-empty-lines' => true
+     *     'ignore-empty-lines' => true,
+     *     // Multiple in one
+     *     // If true, you must define separator
+     *     // optionnal, default false,
+     *     'multiple' => false,
+     *     // Separator, only used if multiple is true
+     *     // define files separator
+     *     'separator' => [
+     *         'field' => length, // Separator field
+     *         'values' => [ 'value', 'value'], // Field values considered as separator
+     *         'ignore' => true // Ignore separation line
+     *     ]
      * ]
      *
      * @param array $schema
@@ -138,46 +135,15 @@ class Parser
     }
 
     /**
-     * Define strict mode
-     *
-     * @param boolean $mode
-     *
-     * @return FixedColumnWidth
-     */
-    public function setStrictMode($mode)
-    {
-        $this->strictMode = $mode;
-
-        return $this;
-    }
-
-    /**
-     * Get strict mode
-     *
-     * @return boolean
-     */
-    public function getStrictMode()
-    {
-        return $this->strictMode;
-    }
-
-    /**
      * Parse given file (or previously setted file).
-     * If strict mode is enabled, it will throw exception if fields are missing
-     * or if extra fields are found
      *
-     * @param boolean $strictMode
      * @param string  $file
      * @param array   $schema
      *
      * @return array
      */
-    public function parse($strictMode = null, $file = null, $schema = null)
+    public function parse($file = null, $schema = null)
     {
-        if (!is_null($sctrictMode)) {
-            $this->setStrictMode($strictMode);
-        }
-
         if (!is_null($file)) {
             $this->setFile($file);
         }
@@ -188,23 +154,32 @@ class Parser
 
         $handle = fopen($this->file, 'r');
 
+        if (!isset($this->schema['entry'])) {
+            throw new \RuntimeException(sprintf(
+                'Unable to to parse "%s" file, "entry" configuration is missing',
+                $this->file
+            ));
+        }
+
+        if ($this->schema['multiple'] && empty($this->schema['separator'])) {
+            throw new \RuntimeException('Multiple file parsing require separator definition');
+        }
+
         if (!$handle) {
             throw new \RuntimeException(sprintf('Unable to read "%s" file', $this->file));
         }
 
-        $this->headerLine = !is_array($this->schema['header']) ? -1 : 0;
+        $this->headerLine = !is_array($this->schema['header']) ? -1 : 1;
         $this->currentLineNumber = 0;
-        $this->currentEntryData = [];
-        $this->data = [
-            'header' => null,
-            'entries' => []
-        ];
+        $this->data = [];
 
         while (($line = fgets($handle)) !== false) {
 
+            $this->currentLineNumber++;
+
             // Ignored lines
-            if (!is_null($this->schema['ignored'])) {
-                if (in_array($this->currentLineNumber, $this->schema['ignored'])) {
+            if (!is_null($this->schema['ignore'])) {
+                if (in_array($this->currentLineNumber, $this->schema['ignore'])) {
                     if ($this->currentLineNumber == $this->headerLine) {
                         $this->headerLine++;
                     }
@@ -212,15 +187,64 @@ class Parser
                 }
             }
 
-            if ($this->currentLineNumber == $this->headerLine) {
-                $this->data['header'] = $this->parseHeader($line);
-            } else {
-                if (!is_null($data = $this->parseEntry($line))) {
-                    $this->data['entries'][] = $data;
-                }
+            // Empty line
+            $line = trim($line);
+            if (empty($line) && $this->schema['ignore-empty-lines']) {
+                continue;
             }
 
-            $this->currentLineNumber++;
+            // Multiple
+            if ($this->schema['multiple']) {
+                $dataCount = count($this->data);
+
+                if (!$dataCount) {
+                    unset($data);
+                    $data = [];
+                    $this->data[] = &$data;
+                }
+
+                if ($this->isSeparationLine($line, $this->schema['separator'])) {
+                    if ($dataCount) {
+                        unset($data);
+                        $data = [];
+                        $this->data[] = &$data;
+                        $this->headerLine = $this->currentLineNumber;
+
+                        if (is_array($this->schema['ignore'])) {
+
+                            $currentLineNumber = $this->currentLineNumber;
+
+                            $this->schema['ignore'] = array_map(
+                                function($lineNumber) use($currentLineNumber) {
+                                    return $lineNumber + $currentLineNumber - 1;
+                                },
+                                $this->schema['ignore']
+                            );
+                        }
+                    }
+
+                    if ($this->schema['separator']['ignore']) {
+                        $this->headerLine++;
+                        continue;
+                    }
+
+                }
+
+            } else {
+                $data = &$this->data;
+            }
+
+
+            // Parse line
+            if ($this->currentLineNumber == $this->headerLine) {
+                $data['header'] = $this->parseLine($line, $schema['header']);
+            } else {
+                $data['entries'][] = $this->parseLine(
+                    $line,
+                    $schema['entry'],
+                    $this->schema['header-as-field-name'] && isset($data['header']) ? $data['header'] : null
+                );
+            }
         }
 
         fclose($handle);
@@ -238,23 +262,40 @@ class Parser
         return self::$defaultSchema;
     }
 
-    protected function parseHeader($line)
+    protected function parseLine($line, array $schema, array $fieldNames = null)
     {
-        $header = [];
-        foreach ($this->schema['header'] as $field => $length) {
-            $value = $this->parseField($line, $length);
-            $header[$field] = $value;
+        $data = [];
+        foreach ($schema as $field => $length) {
+            $data[$field] = $this->parseField($line, $length);
         }
 
-        return $header;
+        if (!is_null($fieldNames)) {
+            $data = array_combine($fieldNames, $data);
+        }
+
+        return $data;
     }
 
-    protected function parseEntry($line)
+    protected function parseField(&$line, $length, $remove = true)
     {
+        $field = substr($line, 0, min($length, strlen($line)));
+        $fieldLength = strlen($field);
+
+        if ($remove) {
+            $line = substr($line, $fieldLength);
+        }
+
+        $field = trim($field);
+
+        return empty($field) ? null: $field;
     }
 
-    protected function parseField(&$line, $length)
+    protected function isSeparationLine($line, array $separator)
     {
-
+        return in_array(
+            $this->parseField($line, $separator['field'], false),
+            $separator['values']
+        );
     }
 }
+

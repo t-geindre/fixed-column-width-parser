@@ -79,6 +79,7 @@ class SchemaValidator
      *
      * @param array  $schema
      * @param string $index
+     * @param string $identifier
      */
     protected function checkNullOrArray($schema, $index, $identifier)
     {
@@ -96,6 +97,7 @@ class SchemaValidator
      *
      * @param array  $schema
      * @param string $index
+     * @param string $identifier
      */
     protected function checkBoolean($schema, $index, $identifier)
     {
@@ -113,6 +115,7 @@ class SchemaValidator
      *
      * @param array  $schema
      * @param string $index
+     * @param string $identifier
      */
     protected function checkString($schema, $index, $identifier)
     {
@@ -130,6 +133,7 @@ class SchemaValidator
      *
      * @param array  $schema
      * @param string $index
+     * @param string $identifier
      */
     protected function checkArrayOfInt($schema, $index, $identifier)
     {
@@ -151,6 +155,7 @@ class SchemaValidator
      *
      * @param array  $schema
      * @param string $index
+     * @param string $identifier
      */
     protected function checkEmpty($schema, $index, $identifier)
     {
@@ -165,7 +170,8 @@ class SchemaValidator
     /**
      * Check if given schema is an array
      *
-     * @param array  $array
+     * @param array  $schema
+     * @param string $index
      * @param string $identifier
      */
     protected function checkArray($schema, $index, $identifier)
@@ -182,7 +188,8 @@ class SchemaValidator
     /**
      * Check if given schema is an integer
      *
-     * @param array  $array
+     * @param array  $schema
+     * @param string $index
      * @param string $identifier
      */
     protected function checkInt($schema, $index, $identifier)

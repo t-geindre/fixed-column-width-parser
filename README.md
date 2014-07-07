@@ -7,7 +7,7 @@ Parser for fixed column width files.
 Via [Composer](https://getcomposer.org/) :
 
 ```shell
-composer install zol/fixed-column-width-parser
+$ composer install zol/fixed-column-width-parser
 ```
 
 ## Usage
@@ -37,11 +37,11 @@ $parser->parse();
 
     // Header line, null if missing
     // Optionnal, null by default
-    'header' => ['field' => length],
+    'header' => ['field-name' => length, 'field-name' => length],
 
     // Define entry schema
     // Required
-    'entry' => ['field' => length, 'field' => length],
+    'entry' => ['field-name' => length, 'field-name' => length],
 
     // Use header values as entry field names
     // If true, entry field names will be replaced with header values

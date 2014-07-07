@@ -1,0 +1,9 @@
+id  name     phone      street
+----------------------------------
+123 john     0152458652 5th street
+
+321 isabelle 0352158546 4th street
+id  name     phone_num  street
+----------------------------------
+123 john     0152458652 1st street
+321 isabelle 0352158546 2nd street

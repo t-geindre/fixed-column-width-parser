@@ -158,7 +158,7 @@ $parser->parse();
 ]
 ```
 
-See [tests](tests/units/Parser.php) for more examples.
+See [parser tests](tests/units/Parser.php) for more examples.
 
 ## Tests
 

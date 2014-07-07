@@ -15,14 +15,10 @@ class SchemaValidator
      *
      * @return boolean
      */
-    public function validateSchema(array $schema = null, $thowException = false)
+    public function validateSchema(array $schema, $thowException = false)
     {
         if (is_null($schema)) {
             $schema = $this->schema;
-        }
-
-        if (!is_array($schema)) {
-            throw new \InvalidArgumentException(sprintf('Schema must be an array, %s given', gettype($schema)));
         }
 
         $schema = array_merge(Parser::getDefaultSchema(), $schema);
@@ -30,26 +26,41 @@ class SchemaValidator
         try {
 
             // "ignore" section
-            $this->checkNullOrArray($schema, 'ignore');
-            $this->checkArrayOfInt($schema, 'ignore');
+            $this->checkNullOrArray($schema, 'ignore', 'ignore option');
+            if (is_array($schema['ignore'])) {
+                $this->checkArrayOfInt($schema, 'ignore', 'ignore option');
+            }
 
             // "header" section
-            $this->checkNullOrArray($schema, 'header');
+            $this->checkNullOrArray($schema, 'header', 'header definition');
             if (is_array($schema['header'])) {
-                $this->checkFieldLengthArray($schema['header'], 'header');
+                $this->checkArrayOfInt($schema, 'header', 'header defnition');
             }
 
             // "entry" section
-            $this->checkEmpty($schema, 'entry');
-            $this->checkArray($schema['entry'], 'entry');
-            foreach ($schema['entry'] as $entry) {
-                $this->checkArray($entry, 'entry line');
-                $this->checkFieldLengthArray($entry, 'entry line');
-            }
+            $this->checkEmpty($schema, 'entry', 'entry definition');
+            $this->checkArray($schema, 'entry', 'entry defnition');
+            $this->checkArrayOfInt($schema, 'entry', 'entry defnition');
 
             // boolean options
-            $this->checkBoolean($schema, 'header-as-field-name');
-            $this->checkBoolean($schema, 'ignore-empty-lines');
+            $this->checkBoolean($schema, 'header-as-field-name', 'header-as-field-name option');
+            $this->checkBoolean($schema, 'ignore-empty-lines', 'ignore-empty-lines option');
+            $this->checkBoolean($schema, 'multiple', 'multiple option');
+
+            // "separator" section
+            if ($schema['multiple']) {
+                $this->checkEmpty($schema, 'separator', 'multiple option is true, separator definition');
+                $this->checkArray($schema, 'separator', 'serapator definition');
+
+                $this->checkEmpty($schema['separator'], 'field', 'serapator field definition');
+                $this->checkInt($schema['separator'], 'field', 'serapator field definition');
+
+                $this->checkEmpty($schema['separator'], 'values', 'serapator field values definition');
+                $this->checkArray($schema['separator'], 'values', 'serapator field values definition');
+
+                $this->checkEmpty($schema['separator'], 'ignore', 'serapator ignore line option');
+                $this->checkBoolean($schema['separator'], 'ignore', 'serapator ignore line option');
+            }
 
         } catch (SchemaValidationException $e) {
             if ($thowException) {
@@ -69,12 +80,12 @@ class SchemaValidator
      * @param array  $schema
      * @param string $index
      */
-    protected function checkNullOrArray($schema, $index)
+    protected function checkNullOrArray($schema, $index, $identifier)
     {
         if (!is_array($schema[$index]) && !is_null($schema[$index])) {
             throw new SchemaValidationException(sprintf(
-                '"%s" option must be null or an array, %s given',
-                $index,
+                '%s must be null or an array, %s given',
+                $identifier,
                 gettype($schema[$index])
             ));
         }
@@ -86,12 +97,29 @@ class SchemaValidator
      * @param array  $schema
      * @param string $index
      */
-    protected function checkBoolean($schema, $index)
+    protected function checkBoolean($schema, $index, $identifier)
     {
         if (!is_bool($schema[$index])) {
             throw new SchemaValidationException(sprintf(
-                '"%s" option must be boolean, %s given',
-                $index,
+                '%s must be boolean, %s given',
+                $identifier,
+                gettype($schema[$index])
+            ));
+        }
+    }
+
+    /**
+     * Check if given schema contains string value
+     *
+     * @param array  $schema
+     * @param string $index
+     */
+    protected function checkString($schema, $index, $identifier)
+    {
+        if (!is_bool($schema[$index])) {
+            throw new SchemaValidationException(sprintf(
+                '%s must be string, %s given',
+                $identifier,
                 gettype($schema[$index])
             ));
         }
@@ -103,15 +131,15 @@ class SchemaValidator
      * @param array  $schema
      * @param string $index
      */
-    protected function checkArrayOfInt($schema, $index)
+    protected function checkArrayOfInt($schema, $index, $identifier)
     {
         if (is_array($schema[$index])) {
-            foreach ($schema[$index] as $lineNumber) {
-                if (!is_int($lineNumber)) {
+            foreach ($schema[$index] as $intValue) {
+                if (!is_int($intValue)) {
                     throw new SchemaValidationException(sprintf(
-                        '"%s" array option should only contains integer, %s found',
-                        $index,
-                        gettype($lineNumber)
+                        '%s should only contains integer, %s found',
+                        $identifier,
+                        gettype($intValue)
                     ));
                 }
             }
@@ -124,12 +152,12 @@ class SchemaValidator
      * @param array  $schema
      * @param string $index
      */
-    protected function checkEmpty($schema, $index)
+    protected function checkEmpty($schema, $index, $identifier)
     {
         if (empty($schema[$index])) {
             throw new SchemaValidationException(sprintf(
-                '"%s" option is required et must not be empty',
-                $index
+                '%s is required et must not be empty',
+                $identifier
             ));
         }
     }
@@ -140,42 +168,31 @@ class SchemaValidator
      * @param array  $array
      * @param string $identifier
      */
-    protected function checkArray($array, $identifier)
+    protected function checkArray($schema, $index, $identifier)
     {
-        if (!is_array($array)) {
+        if (!is_array($schema[$index])) {
             throw new SchemaValidationException(sprintf(
-                '%s must be an array, %s found',
+                '%s must be an array, %s given',
                 $identifier,
-                gettype($array)
+                gettype($schema[$index])
             ));
         }
     }
 
     /**
-     * Check if given array contains only field definitions
+     * Check if given schema is an integer
      *
      * @param array  $array
      * @param string $identifier
      */
-    protected function checkFieldLengthArray($array, $identifier)
+    protected function checkInt($schema, $index, $identifier)
     {
-        foreach ($array as $key => $value) {
-            if (!is_string($key)) {
-                throw new SchemaValidationException(sprintf(
-                    '%s definition should only contains string keys, %s found',
-                    $identifier,
-                    gettype($key)
-                ));
-            }
-
-            if (!is_int($value)) {
-                throw new SchemaValidationException(sprintf(
-                    '%s definition should only contains integer values, %s found',
-                    $identifier,
-                    gettype($value)
-                ));
-            }
+        if (!is_int($schema[$index])) {
+            throw new SchemaValidationException(sprintf(
+                '%s must be an integer, %s given',
+                $identifier,
+                gettype($schema[$index])
+            ));
         }
     }
-
 }

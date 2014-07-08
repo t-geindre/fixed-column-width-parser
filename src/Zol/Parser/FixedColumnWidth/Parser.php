@@ -212,11 +212,11 @@ class Parser
 
             // Parse line
             if ($this->currentLineNumber == $this->headerLine) {
-                $data['header'] = $this->parseLine($line, $schema['header']);
+                $data['header'] = $this->parseLine($line, $this->schema['header']);
             } else {
                 $data['entries'][] = $this->parseLine(
                     $line,
-                    $schema['entry'],
+                    $this->schema['entry'],
                     $this->schema['header-as-field-name'] && isset($data['header']) ? $data['header'] : null
                 );
             }

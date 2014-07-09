@@ -159,7 +159,7 @@ class SchemaValidator
      */
     protected function checkEmpty($schema, $index, $identifier)
     {
-        if (empty($schema[$index])) {
+        if (!isset($schema[$index]) || (empty($schema[$index]) && $schema[$index] !== false)) {
             throw new SchemaValidationException(sprintf(
                 '%s is required et must not be empty',
                 $identifier

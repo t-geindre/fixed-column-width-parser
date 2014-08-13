@@ -280,7 +280,7 @@ class Parser
 
         $field = trim($field);
 
-        return empty($field) ? null: $field;
+        return strlen($field) == 0 ? null : $field;
     }
 
     /**
